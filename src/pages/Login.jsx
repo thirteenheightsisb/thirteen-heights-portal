@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase, friendlyError } from '../supabase'
-import { CREDIT_LINE } from '../credits'
+import Credit from '../components/Credit'
 
 export default function Login() {
   const [mode, setMode] = useState('login')
@@ -41,7 +41,7 @@ export default function Login() {
           <h1>Every flat, every resident, every rupee.</h1>
           <p>Residents, rent, electricity bills, payments and invoices for your building, in one place.</p>
         </div>
-        <div className="credit">{CREDIT_LINE}</div>
+        <Credit />
       </div>
       <div className="auth-form">
         <form className="auth-card" onSubmit={submit}>

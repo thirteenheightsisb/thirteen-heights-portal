@@ -67,7 +67,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .sidebar-foot .who { color: #fff; font-weight: 600; }
 .sidebar-foot .role { color: #A9B8CA; font-size: 0.78rem; }
 .sidebar-foot .links { display: flex; gap: 12px; margin-top: 8px; }
-.credit { margin-top: 14px; font-size: 0.72rem; line-height: 1.4; color: #8FA2B8; }
+.credit { margin-top: 16px; display: flex; flex-direction: column; }
+.credit-top { font-size: 0.7rem; color: #8FA2B8; letter-spacing: 0.02em; }
+.credit-company { font-size: 0.82rem; font-weight: 700; color: #FFFFFF; letter-spacing: 0.01em; white-space: nowrap; }
+.credit-name { font-family: 'Dancing Script', 'Brush Script MT', cursive; font-weight: 700; font-size: 1.45rem; line-height: 1.15; color: #F2D27A; margin-top: 4px; }
+.auth-side .credit-top { font-size: 0.8rem; }
+.auth-side .credit-company { font-size: 0.95rem; }
+.auth-side .credit-name { font-size: 1.8rem; }
 .sidebar-foot button { background: none; border: 0; color: #C8D4E2; padding: 0; cursor: pointer; text-decoration: underline; font-size: 0.82rem; }
 
 .main { min-width: 0; display: flex; flex-direction: column; }

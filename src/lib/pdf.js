@@ -114,8 +114,10 @@ function drawInvoice(doc, autoTable, { settings, resident, invoice, lines }) {
   doc.setFontSize(8)
   doc.setTextColor(...MUTED)
   doc.text('This is a computer-generated invoice.', w / 2, h - 13, { align: 'center' })
-  doc.setFontSize(7.5)
+  doc.setFont('helvetica', 'italic')
+  doc.setFontSize(8)
   doc.text(CREDIT_LINE, w / 2, h - 8, { align: 'center' })
+  doc.setFont('helvetica', 'normal')
 }
 
 function safe(name) {
@@ -176,7 +178,9 @@ export async function downloadReceipt({ settings, resident, payment }) {
   }
   doc.setFontSize(8)
   doc.text('This is a computer-generated receipt.', w / 2, doc.internal.pageSize.getHeight() - 11, { align: 'center' })
-  doc.setFontSize(7.5)
+  doc.setFont('helvetica', 'italic')
+  doc.setFontSize(8)
   doc.text(CREDIT_LINE, w / 2, doc.internal.pageSize.getHeight() - 6, { align: 'center' })
+  doc.setFont('helvetica', 'normal')
   doc.save(`Receipt_${payment.receipt_no}_${safe(resident.full_name)}.pdf`)
 }

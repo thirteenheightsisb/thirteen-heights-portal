@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase, isConfigured, check } from './supabase'
 import { AppContext } from './context'
 import { money as fmtMoney } from './lib/format'
-import { CREDIT_LINE } from './credits'
+import Credit from './components/Credit'
 import { Icon, Loading, Modal, Field } from './components/ui'
 import GlobalSearch from './components/GlobalSearch'
 import Login from './pages/Login'
@@ -137,7 +137,7 @@ function App() {
               <button onClick={() => setPwOpen(true)}>Change password</button>
               <button onClick={() => supabase.auth.signOut()}>Sign out</button>
             </div>
-            <div className="credit">{CREDIT_LINE}</div>
+            <Credit />
           </div>
         </aside>
         <div className="main">
