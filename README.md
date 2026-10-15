@@ -38,6 +38,14 @@ Free stack: **Supabase** (database + logins) and **Cloudflare Pages** (website).
 5. Every month: **Monthly billing** → add rent → enter electricity bills → **Invoices** → download all.
 6. **Portal users** → **Add user** for your staff.
 
+## Owner payouts (paying the actual flat owners)
+1. **Owner payouts** → on each flat press **Owner details** → enter owner name, phone, bank account and the amount you pay them each month.
+2. When you pay an owner, press **Pay** on that flat (or **+ Record payout**). Fill in the amount, method, the **account it was paid into**, transaction ID and any **note**.
+3. The top of the page shows, for the chosen month: rent collected, owed to owners, paid to owners and still to pay.
+4. **Download Excel** in Payout history gives you a record of every payout with its account details and notes. **Send** shares the payout details with the owner on WhatsApp.
+
+*Already set up before this feature?* Run `supabase/owner_payouts.sql` once in the Supabase SQL Editor.
+
 ## Good habits
 - **Settings → Download full backup** once a week (free plan has no automatic backups).
 - Free Supabase projects pause after ~7 days with no use. If the portal says it can't reach the database, open Supabase and press **Restore project**.
