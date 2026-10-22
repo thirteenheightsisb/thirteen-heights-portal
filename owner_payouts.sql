@@ -1,5 +1,5 @@
 -- =====================================================================
---  HOSTEL PORTAL — OWNER PAYOUTS (update for an existing database)
+--  13 HEIGHTS MANAGEMENT PORTAL — OWNER PAYOUTS (update for an existing database)
 --  Paste this whole file into Supabase > SQL Editor and press "Run".
 --  It only ADDS things. It is safe to run again and won't touch your data.
 -- =====================================================================

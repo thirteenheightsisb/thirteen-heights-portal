@@ -1,5 +1,5 @@
 -- =====================================================================
---  HOSTEL PORTAL — DATABASE SETUP
+--  13 HEIGHTS MANAGEMENT PORTAL — DATABASE SETUP
 --  Paste this whole file into Supabase > SQL Editor and press "Run".
 --  It is safe to run again later (it won't delete your data).
 -- =====================================================================
@@ -8,7 +8,7 @@
 
 create table if not exists public.settings (
   id            int primary key default 1 check (id = 1),
-  hostel_name   text not null default 'My Hostel',
+  hostel_name   text not null default '13 Heights',
   address       text,
   phone         text,
   currency      text not null default 'Rs.',
@@ -63,6 +63,7 @@ create table if not exists public.residents (
   persons            int not null default 1 check (persons >= 1),
   flat_id            uuid references public.flats (id) on delete set null,
   monthly_rent       numeric(12,2) not null default 0 check (monthly_rent >= 0),
+  maintenance_charge numeric(12,2) not null default 0 check (maintenance_charge >= 0),
   security_deposit   numeric(12,2) not null default 0 check (security_deposit >= 0),
   check_in           date not null default current_date,
   check_out          date,
@@ -70,6 +71,7 @@ create table if not exists public.residents (
   notes              text,
   created_at         timestamptz not null default now()
 );
+alter table public.residents add column if not exists maintenance_charge numeric(12,2) not null default 0;
 -- A flat can only have one active resident at a time
 create unique index if not exists one_active_resident_per_flat
   on public.residents (flat_id) where status = 'active';
@@ -78,7 +80,7 @@ create table if not exists public.charges (
   id           uuid primary key default gen_random_uuid(),
   resident_id  uuid not null references public.residents (id) on delete cascade,
   flat_id      uuid references public.flats (id) on delete set null,
-  type         text not null check (type in ('rent', 'utilities', 'deposit', 'other')),
+  type         text not null check (type in ('rent', 'maintenance', 'utilities', 'deposit', 'other')),
   description  text,
   amount       numeric(12,2) not null check (amount >= 0),
   period       date not null,                       -- always the 1st of the month
@@ -86,8 +88,14 @@ create table if not exists public.charges (
   created_by   uuid default auth.uid(),
   created_at   timestamptz not null default now()
 );
+-- 'utilities' is only kept so old electricity bills still load; the portal no longer adds them.
+alter table public.charges drop constraint if exists charges_type_check;
+alter table public.charges
+  add constraint charges_type_check check (type in ('rent', 'maintenance', 'utilities', 'deposit', 'other'));
 create unique index if not exists one_rent_per_month
   on public.charges (resident_id, period) where type = 'rent';
+create unique index if not exists one_maintenance_per_month
+  on public.charges (resident_id, period) where type = 'maintenance';
 create index if not exists charges_resident_idx on public.charges (resident_id);
 create index if not exists charges_period_idx on public.charges (period);
 
@@ -244,6 +252,37 @@ begin
 end;
 $$;
 
+-- Add maintenance charges for every active resident for a given month (skips anyone already charged)
+create or replace function public.generate_monthly_maintenance(p_period date)
+returns integer language plpgsql security invoker set search_path = public as $$
+declare
+  v_period date := date_trunc('month', p_period)::date;
+  v_due_day int;
+  v_count int;
+begin
+  if not public.is_approved() then
+    raise exception 'Not allowed';
+  end if;
+  select due_day into v_due_day from public.settings where id = 1;
+
+  insert into public.charges (resident_id, flat_id, type, description, amount, period, due_date)
+  select r.id, r.flat_id, 'maintenance',
+         'Maintenance - ' || to_char(v_period, 'FMMonth YYYY'),
+         r.maintenance_charge, v_period, v_period + (coalesce(v_due_day, 1) - 1)
+  from public.residents r
+  where r.status = 'active'
+    and r.maintenance_charge > 0
+    and r.check_in <= (v_period + interval '1 month' - interval '1 day')::date
+    and not exists (
+      select 1 from public.charges c
+      where c.resident_id = r.id and c.type = 'maintenance' and c.period = v_period
+    );
+
+  get diagnostics v_count = row_count;
+  return v_count;
+end;
+$$;
+
 -- ---------- 3. VIEWS (balances are always calculated, never typed) ----------
 
 drop view if exists public.residents_overview;
@@ -328,6 +367,7 @@ grant usage on schema public to authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
 grant usage, select on all sequences in schema public to authenticated;
 grant execute on function public.generate_monthly_rent(date) to authenticated;
+grant execute on function public.generate_monthly_maintenance(date) to authenticated;
 grant execute on function public.is_approved() to authenticated;
 grant execute on function public.is_admin() to authenticated;
 
