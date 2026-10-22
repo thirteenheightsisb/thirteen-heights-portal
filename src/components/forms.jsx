@@ -101,12 +101,14 @@ export function ResidentForm({ resident, presetFlatId, onClose, onSaved }) {
     email: resident?.email || '', occupation: resident?.occupation || '', persons: resident?.persons ?? 1,
     permanent_address: resident?.permanent_address || '', emergency_name: resident?.emergency_name || '',
     emergency_phone: resident?.emergency_phone || '', flat_id: resident?.flat_id || presetFlatId || '',
-    monthly_rent: resident?.monthly_rent ?? '', security_deposit: resident?.security_deposit ?? '',
+    monthly_rent: resident?.monthly_rent ?? '', maintenance_charge: resident?.maintenance_charge ?? '',
+    security_deposit: resident?.security_deposit ?? '',
     check_in: resident?.check_in || todayStr(), notes: resident?.notes || '',
   })
   const [chargeDeposit, setChargeDeposit] = useState(true)
   const [chargeRent, setChargeRent] = useState(true)
   const [firstRent, setFirstRent] = useState('')
+  const [chargeMaint, setChargeMaint] = useState(true)
 
   useEffect(() => {
     supabase.from('flats_overview').select('id, flat_no, floor, monthly_rent, occupancy, resident_id').order('flat_no')
@@ -136,7 +138,7 @@ export function ResidentForm({ resident, presetFlatId, onClose, onSaved }) {
     const row = {
       ...f, full_name: f.full_name.trim(), flat_id: f.flat_id || null,
       persons: Math.max(1, parseInt(f.persons, 10) || 1),
-      monthly_rent: num(f.monthly_rent), security_deposit: num(f.security_deposit),
+      monthly_rent: num(f.monthly_rent), maintenance_charge: num(f.maintenance_charge), security_deposit: num(f.security_deposit),
     }
     if (editing) {
       check(await supabase.from('residents').update(row).eq('id', resident.id))
@@ -151,6 +153,9 @@ export function ResidentForm({ resident, presetFlatId, onClose, onSaved }) {
     }
     if (chargeRent && num(firstRent) > 0) {
       extra.push({ resident_id: created.id, flat_id: row.flat_id, type: 'rent', description: `Rent - ${monthLabel(period)}`, amount: num(firstRent), period, due_date: row.check_in })
+    }
+    if (chargeMaint && row.maintenance_charge > 0) {
+      extra.push({ resident_id: created.id, flat_id: row.flat_id, type: 'maintenance', description: `Maintenance - ${monthLabel(period)}`, amount: row.maintenance_charge, period, due_date: row.check_in })
     }
     if (extra.length) check(await supabase.from('charges').insert(extra))
     notify('Resident added')
@@ -186,6 +191,11 @@ export function ResidentForm({ resident, presetFlatId, onClose, onSaved }) {
         <Field label="Security deposit" hint={editing ? 'Changing this does not change charges already added' : undefined}>
           <input type="number" min="0" value={f.security_deposit} onChange={set('security_deposit')} />
         </Field>
+
+        <div className="form-section">Maintenance charges</div>
+        <Field label="Maintenance charges (per month)" hint="Billed every month on top of the rent, as a separate line on the invoice">
+          <input type="number" min="0" value={f.maintenance_charge} onChange={set('maintenance_charge')} />
+        </Field>
         {!editing && (
           <>
             <label className="check full">
@@ -200,6 +210,12 @@ export function ResidentForm({ resident, presetFlatId, onClose, onSaved }) {
               <Field label={`Rent for ${monthLabel(f.check_in)}`} hint="Reduce it if they moved in mid-month">
                 <input type="number" min="0" value={firstRent} onChange={(e) => setFirstRent(e.target.value)} />
               </Field>
+            )}
+            {num(f.maintenance_charge) > 0 && (
+              <label className="check full">
+                <input type="checkbox" checked={chargeMaint} onChange={(e) => setChargeMaint(e.target.checked)} />
+                <span>Charge maintenance for {monthLabel(f.check_in)} now ({money(num(f.maintenance_charge))}). Future months are added from the Billing page.</span>
+              </label>
             )}
           </>
         )}
@@ -282,7 +298,7 @@ export function PaymentForm({ resident, onClose, onSaved }) {
 /* ------------------------------------------------------------------ */
 export function ChargeForm({ resident, onClose, onSaved }) {
   const { notify, settings } = useApp()
-  const [f, setF] = useState({ type: 'utilities', month: currentMonth(), description: '', amount: '' })
+  const [f, setF] = useState({ type: 'other', month: currentMonth(), description: '', amount: '' })
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   const autoDesc = `${CHARGE_TYPES[f.type]} - ${monthLabel(f.month)}`
   const { busy, error, run } = useSubmit(async () => {
