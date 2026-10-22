@@ -32,7 +32,7 @@ export default function Activity() {
       case 'payments': return `${d.kind === 'refund' ? 'Refund' : 'Payment'} #${d.receipt_no} — ${money(d.amount)} (${d.method})`
       case 'invoices': return `Invoice INV-${String(d.invoice_no).padStart(5, '0')} for ${monthLabel(d.period)}`
       case 'profiles': return `${d.full_name || d.email}${r.action === 'UPDATE' ? ` → ${d.role}, ${d.approved ? 'allowed' : 'no access'}` : ''}`
-      default: return 'Hostel settings'
+      default: return 'Portal settings'
     }
   }
 

@@ -16,7 +16,7 @@ export default function Settings() {
     setBusy(true)
     try {
       const row = {
-        hostel_name: f.hostel_name?.trim() || 'My Hostel', address: f.address, phone: f.phone,
+        hostel_name: f.hostel_name?.trim() || '13 Heights', address: f.address, phone: f.phone,
         currency: f.currency?.trim() || 'Rs.', country_code: String(f.country_code || '92').replace(/\D/g, '') || '92',
         due_day: Math.min(28, Math.max(1, parseInt(f.due_day, 10) || 1)), invoice_note: f.invoice_note, updated_at: new Date().toISOString(),
       }
@@ -38,7 +38,7 @@ export default function Settings() {
         fetchAll(() => supabase.from('invoices').select('*, residents(full_name)').order('period').order('id')),
       ])
       const flat = (rows) => rows.map(({ residents: r, ...rest }) => ({ resident_name: r?.full_name, ...rest }))
-      await exportToExcel({ Flats: flats, Residents: residents, Charges: flat(charges), Payments: flat(payments), Invoices: flat(invoices) }, `Hostel_backup_${todayStr()}.xlsx`)
+      await exportToExcel({ Flats: flats, Residents: residents, Charges: flat(charges), Payments: flat(payments), Invoices: flat(invoices) }, `13Heights_backup_${todayStr()}.xlsx`)
       notify('Backup downloaded')
     } catch (x) { notify(x.message, 'error') }
     setBusy(false)
@@ -49,9 +49,9 @@ export default function Settings() {
       <div className="page-head"><div><h1>Settings</h1><p>These details appear on invoices and receipts.</p></div></div>
       <div className="grid-2" style={{ alignItems: 'start' }}>
         <form className="panel" onSubmit={save}>
-          <div className="panel-head"><h2>Hostel details</h2></div>
+          <div className="panel-head"><h2>Building details</h2></div>
           <div className="panel-body form-grid">
-            <Field label="Hostel / building name" full><input value={f.hostel_name || ''} onChange={set('hostel_name')} /></Field>
+            <Field label="Building name" full><input value={f.hostel_name || ''} onChange={set('hostel_name')} /></Field>
             <Field label="Address" full><input value={f.address || ''} onChange={set('address')} /></Field>
             <Field label="Contact phone"><input value={f.phone || ''} onChange={set('phone')} /></Field>
             <Field label="Currency symbol"><input value={f.currency || ''} onChange={set('currency')} placeholder="Rs." /></Field>

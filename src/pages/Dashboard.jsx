@@ -17,7 +17,7 @@ export default function Dashboard() {
       supabase.from('flats_overview').select('id, flat_no, floor, monthly_rent, occupancy'),
       supabase.from('residents_overview').select('*'),
       supabase.from('charges').select('amount, type, resident_id').eq('period', period),
-      supabase.from('payments').select('amount, kind, method').gte('paid_on', period).lt('paid_on', nextMonthStart(period)),
+      supabase.from('payments').select('amount, kind, method, resident_id').gte('paid_on', period).lt('paid_on', nextMonthStart(period)),
     ])
     setD({
       flats: flats.data || [], residents: residents.data || [],
@@ -38,6 +38,38 @@ export default function Dashboard() {
   const defaulters = d.residents.filter((r) => Number(r.balance) > 0).sort((a, b) => b.balance - a.balance)
   const rentDone = new Set(d.charges.filter((c) => c.type === 'rent').map((c) => c.resident_id))
   const missingRent = active.filter((r) => Number(r.monthly_rent) > 0 && !rentDone.has(r.id)).length
+  const maintDone = new Set(d.charges.filter((c) => c.type === 'maintenance').map((c) => c.resident_id))
+  const missingMaint = active.filter((r) => Number(r.maintenance_charge) > 0 && !maintDone.has(r.id)).length
+
+  // ---- Rent vs maintenance for this month ----
+  // What should be billed this month = every active resident's rent + maintenance.
+  const toBillRent = active.reduce((s, r) => s + Number(r.monthly_rent), 0)
+  const toBillMaint = active.reduce((s, r) => s + Number(r.maintenance_charge), 0)
+  const toBill = toBillRent + toBillMaint
+  // What has actually been added as charges so far.
+  const sumType = (t) => d.charges.filter((c) => c.type === t).reduce((s, c) => s + Number(c.amount), 0)
+  const billedRent = sumType('rent')
+  const billedMaint = sumType('maintenance')
+  // Payments are not split by type when recorded, so each resident's payments this
+  // month are counted against their rent first, then their maintenance.
+  const byRes = {}
+  for (const c of d.charges) {
+    if (c.type !== 'rent' && c.type !== 'maintenance') continue
+    byRes[c.resident_id] ||= { rent: 0, maint: 0, paid: 0 }
+    byRes[c.resident_id][c.type === 'rent' ? 'rent' : 'maint'] += Number(c.amount)
+  }
+  for (const p of d.payments) {
+    if (p.kind !== 'payment' || p.method === 'Deposit adjusted') continue
+    byRes[p.resident_id] ||= { rent: 0, maint: 0, paid: 0 }
+    byRes[p.resident_id].paid += Number(p.amount)
+  }
+  let rentCollected = 0, maintCollected = 0
+  for (const x of Object.values(byRes)) {
+    const r = Math.min(x.paid, x.rent)
+    rentCollected += r
+    maintCollected += Math.min(x.paid - r, x.maint)
+  }
+  const pct = (a, b) => (b > 0 ? `${Math.round((a / b) * 100)}%` : '—')
 
   const generate = async () => {
     setBusy(true)
@@ -73,12 +105,23 @@ export default function Dashboard() {
           <button className="btn primary small" disabled={busy} onClick={generate}>Add {monthLabel(period)} rent</button>
         </div>
       )}
+      {missingMaint > 0 && (
+        <div className="info-box" style={{ marginBottom: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <span>Maintenance charges for {monthLabel(period)} have not been added for {missingMaint} resident{missingMaint === 1 ? '' : 's'} yet.</span>
+          <button className="btn small" onClick={() => go('billing')}>Open Monthly billing</button>
+        </div>
+      )}
 
-      <div className="ledger-strip">
+      <div className="ledger-strip five">
         <div>
-          <div className="label">Billed this month</div>
+          <div className="label">To be billed this month</div>
+          <div className="value">{money(toBill)}</div>
+          <div className="foot">Rent {money(toBillRent)} + maintenance {money(toBillMaint)}</div>
+        </div>
+        <div>
+          <div className="label">Billed so far</div>
           <div className="value">{money(expected)}</div>
-          <div className="foot">Rent, bills and deposits</div>
+          <div className="foot">{toBill > 0 ? `${pct(expected, toBill)} of this month` : 'Incl. deposits and other charges'}</div>
         </div>
         <div>
           <div className="label">Collected this month</div>
@@ -94,6 +137,31 @@ export default function Dashboard() {
           <div className="label">Occupancy</div>
           <div className="value">{total ? Math.round((occupied / total) * 100) : 0}%</div>
           <div className="meter"><span style={{ width: `${total ? (occupied / total) * 100 : 0}%` }} /></div>
+        </div>
+      </div>
+
+      <div className="ledger-strip">
+        <div>
+          <div className="label">Rent to collect</div>
+          <div className="value">{money(billedRent)}</div>
+          <div className="foot">{missingRent > 0 ? `${missingRent} resident${missingRent === 1 ? '' : 's'} not billed yet` : 'Rent added for everyone'}</div>
+        </div>
+        <div>
+          <div className="label">Rent collected</div>
+          <div className="value good">{money(rentCollected)}</div>
+          <div className="foot">{pct(rentCollected, billedRent)} of rent billed · {money(Math.max(billedRent - rentCollected, 0))} left</div>
+          <div className="meter"><span style={{ width: `${billedRent > 0 ? Math.min(100, (rentCollected / billedRent) * 100) : 0}%` }} /></div>
+        </div>
+        <div>
+          <div className="label">Maintenance to collect</div>
+          <div className="value">{money(billedMaint)}</div>
+          <div className="foot">{missingMaint > 0 ? `${missingMaint} resident${missingMaint === 1 ? '' : 's'} not billed yet` : toBillMaint > 0 ? 'Maintenance added for everyone' : 'No maintenance charges set'}</div>
+        </div>
+        <div>
+          <div className="label">Maintenance collected</div>
+          <div className="value good">{money(maintCollected)}</div>
+          <div className="foot">{pct(maintCollected, billedMaint)} of maintenance billed · {money(Math.max(billedMaint - maintCollected, 0))} left</div>
+          <div className="meter"><span style={{ width: `${billedMaint > 0 ? Math.min(100, (maintCollected / billedMaint) * 100) : 0}%` }} /></div>
         </div>
       </div>
 

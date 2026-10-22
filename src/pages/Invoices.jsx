@@ -73,7 +73,7 @@ export default function Invoices() {
       </div>
 
       <div className="info-box" style={{ marginBottom: 14 }}>
-        Add this month's rent and electricity bills on <a href="#/billing">Monthly billing</a> first, then create invoices. Each invoice shows the month's charges, any older unpaid balance, and payments received.
+        Add this month's rent and maintenance charges on <a href="#/billing">Monthly billing</a> first, then create invoices. Each invoice shows the month's charges, any older unpaid balance, and payments received.
       </div>
 
       <div className="panel table-wrap">

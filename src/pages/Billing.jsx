@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase, check } from '../supabase'
 import { useApp } from '../context'
-import { Loading, Empty, Field } from '../components/ui'
+import { Loading, Empty } from '../components/ui'
 import { currentMonth, periodOf, monthLabel, dueDateFor } from '../lib/format'
 
 export default function Billing() {
@@ -10,13 +10,12 @@ export default function Billing() {
   const [residents, setResidents] = useState(null)
   const [monthCharges, setMonthCharges] = useState([])
   const [amounts, setAmounts] = useState({})
-  const [desc, setDesc] = useState('')
   const [busy, setBusy] = useState(false)
   const period = periodOf(month)
 
   const load = async () => {
     const [r, c] = await Promise.all([
-      supabase.from('residents_overview').select('id, full_name, flat_id, flat_no, monthly_rent, check_in').eq('status', 'active'),
+      supabase.from('residents_overview').select('id, full_name, flat_id, flat_no, monthly_rent, maintenance_charge, check_in').eq('status', 'active'),
       supabase.from('charges').select('resident_id, type, amount').eq('period', period),
     ])
     setResidents((r.data || []).sort((a, b) => String(a.flat_no).localeCompare(String(b.flat_no), undefined, { numeric: true })))
@@ -27,13 +26,21 @@ export default function Billing() {
 
   if (!residents) return <Loading />
 
+  const inMonth = residents.filter((r) => r.check_in <= `${month}-31`)
+
+  // ---- Rent ----
   const rentDone = new Set(monthCharges.filter((c) => c.type === 'rent').map((c) => c.resident_id))
-  const eligible = residents.filter((r) => Number(r.monthly_rent) > 0 && r.check_in <= `${month}-31`)
+  const eligible = inMonth.filter((r) => Number(r.monthly_rent) > 0)
   const pending = eligible.filter((r) => !rentDone.has(r.id))
-  const utilBy = monthCharges.filter((c) => c.type === 'utilities').reduce((m, c) => ((m[c.resident_id] = (m[c.resident_id] || 0) + Number(c.amount)), m), {})
-  const entered = Object.entries(amounts).filter(([, v]) => Number(v) > 0)
-  const enteredTotal = entered.reduce((s, [, v]) => s + Number(v), 0)
-  const defaultDesc = `Electricity - ${monthLabel(month)}`
+
+  // ---- Maintenance ----
+  const maintBy = monthCharges.filter((c) => c.type === 'maintenance').reduce((m, c) => ((m[c.resident_id] = (m[c.resident_id] || 0) + Number(c.amount)), m), {})
+  const maintPending = inMonth.filter((r) => !maintBy[r.id])
+  // amount to add = what staff typed, otherwise the resident's saved monthly maintenance
+  const maintAmount = (r) => (amounts[r.id] !== undefined ? Number(amounts[r.id]) : Number(r.maintenance_charge))
+  const maintToAdd = maintPending.filter((r) => maintAmount(r) > 0)
+  const maintTotal = maintToAdd.reduce((s, r) => s + maintAmount(r), 0)
+  const maintAddedTotal = Object.values(maintBy).reduce((s, v) => s + v, 0)
 
   const addRent = async () => {
     setBusy(true)
@@ -44,16 +51,15 @@ export default function Billing() {
     load()
   }
 
-  const saveUtilities = async () => {
-    if (!entered.length) return notify('Enter at least one amount', 'error')
+  const addMaintenance = async () => {
+    if (!maintToAdd.length) return notify('Nothing to add — set a maintenance amount for at least one resident', 'error')
     setBusy(true)
     try {
-      const byId = Object.fromEntries(residents.map((r) => [r.id, r]))
-      check(await supabase.from('charges').insert(entered.map(([id, v]) => ({
-        resident_id: id, flat_id: byId[id].flat_id, type: 'utilities', description: desc.trim() || defaultDesc,
-        amount: Number(v), period, due_date: dueDateFor(period, settings.due_day),
+      check(await supabase.from('charges').insert(maintToAdd.map((r) => ({
+        resident_id: r.id, flat_id: r.flat_id, type: 'maintenance', description: `Maintenance - ${monthLabel(month)}`,
+        amount: maintAmount(r), period, due_date: dueDateFor(period, settings.due_day),
       }))))
-      notify(`Bills added for ${entered.length} flat${entered.length === 1 ? '' : 's'}`)
+      notify(`Maintenance for ${monthLabel(month)} added for ${maintToAdd.length} resident${maintToAdd.length === 1 ? '' : 's'}`)
       load()
     } catch (e) { notify(e.message, 'error') }
     setBusy(false)
@@ -64,7 +70,7 @@ export default function Billing() {
       <div className="page-head">
         <div>
           <h1>Monthly billing</h1>
-          <p>Add rent and electricity bills for everyone in one go.</p>
+          <p>Add rent and maintenance charges for everyone in one go.</p>
         </div>
         <div className="actions">
           <input type="month" className="input" style={{ width: 170 }} value={month} onChange={(e) => setMonth(e.target.value)} aria-label="Billing month" />
@@ -92,32 +98,50 @@ export default function Billing() {
 
         <div className="panel">
           <div className="panel-head">
-            <h2>Electricity / utility bills for {monthLabel(month)}</h2>
-            <span className="muted small">Leave blank to skip a flat</span>
+            <h2>Maintenance charges for {monthLabel(month)}</h2>
+            {inMonth.length > 0 && maintPending.length === 0
+              ? <span className="badge green">Done</span>
+              : <span className="muted small">Filled from each resident's details — change an amount if this month is different, or set it to 0 to skip</span>}
           </div>
-          {residents.length === 0 ? <Empty action={<button className="btn" onClick={() => go('residents', null, { add: 1 })}>Add resident</button>}>No active residents.</Empty> : (
+          {inMonth.length === 0 ? <Empty action={<button className="btn" onClick={() => go('residents', null, { add: 1 })}>Add resident</button>}>No active residents for this month.</Empty> : (
             <>
-              <div className="panel-body" style={{ paddingBottom: 0 }}>
-                <Field label="Description on the bill"><input value={desc} onChange={(e) => setDesc(e.target.value)} placeholder={defaultDesc} style={{ maxWidth: 360 }} /></Field>
-              </div>
-              <div className="table-wrap" style={{ marginTop: 12 }}>
+              <div className="table-wrap">
                 <table>
-                  <thead><tr><th>Flat</th><th>Resident</th><th className="r">Already added</th><th style={{ width: 170 }}>Amount</th></tr></thead>
+                  <thead><tr><th>Flat</th><th>Resident</th><th className="r">Monthly maintenance</th><th className="r">Already added</th><th style={{ width: 170 }}>Amount to add</th></tr></thead>
                   <tbody>
-                    {residents.map((r) => (
-                      <tr key={r.id}>
-                        <td className="strong">{r.flat_no || '—'}</td>
-                        <td>{r.full_name}</td>
-                        <td className="r num">{utilBy[r.id] ? money(utilBy[r.id]) : <span className="muted">—</span>}</td>
-                        <td><input className="input" type="number" min="0" inputMode="numeric" value={amounts[r.id] || ''} onChange={(e) => setAmounts({ ...amounts, [r.id]: e.target.value })} aria-label={`Bill for flat ${r.flat_no}`} /></td>
-                      </tr>
-                    ))}
+                    {inMonth.map((r) => {
+                      const done = Boolean(maintBy[r.id])
+                      return (
+                        <tr key={r.id}>
+                          <td className="strong">{r.flat_no || '—'}</td>
+                          <td>{r.full_name}</td>
+                          <td className="r num">{Number(r.maintenance_charge) > 0 ? money(r.maintenance_charge) : <span className="muted">—</span>}</td>
+                          <td className="r num">{done ? <span style={{ color: 'var(--green)' }}>{money(maintBy[r.id])}</span> : <span className="muted">—</span>}</td>
+                          <td>
+                            {done ? <span className="badge green">Added</span> : (
+                              <input className="input" type="number" min="0" inputMode="numeric"
+                                value={amounts[r.id] !== undefined ? amounts[r.id] : (Number(r.maintenance_charge) || '')}
+                                onChange={(e) => setAmounts({ ...amounts, [r.id]: e.target.value })}
+                                aria-label={`Maintenance for flat ${r.flat_no}`} />
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
               <div className="panel-body actions" style={{ justifyContent: 'space-between', borderTop: '1px solid var(--line)' }}>
-                <span className="muted">{entered.length} flats · {money(enteredTotal)}</span>
-                <button className="btn primary" disabled={busy || !entered.length} onClick={saveUtilities}>Add bills</button>
+                <span className="muted">
+                  {maintPending.length === 0
+                    ? `Maintenance added for all ${inMonth.length} residents · ${money(maintAddedTotal)}`
+                    : `${maintToAdd.length} resident${maintToAdd.length === 1 ? '' : 's'} to add · ${money(maintTotal)}${maintAddedTotal > 0 ? ` · already added ${money(maintAddedTotal)}` : ''}`}
+                </span>
+                {maintPending.length > 0 && (
+                  <button className="btn primary" disabled={busy || !maintToAdd.length} onClick={addMaintenance}>
+                    Add maintenance for {maintToAdd.length} resident{maintToAdd.length === 1 ? '' : 's'}
+                  </button>
+                )}
               </div>
             </>
           )}

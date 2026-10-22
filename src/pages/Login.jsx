@@ -39,7 +39,7 @@ export default function Login() {
         </div>
         <div>
           <h1>Every flat, every resident, every rupee.</h1>
-          <p>Residents, rent, electricity bills, payments and invoices for your building, in one place.</p>
+          <p>Residents, rent, maintenance charges, payments and invoices for 13 Heights, in one place.</p>
         </div>
         <Credit />
       </div>

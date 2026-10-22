@@ -6,7 +6,7 @@ import { ResidentForm, PaymentForm, ChargeForm, CheckoutForm } from '../componen
 import { buildLedger } from '../lib/ledger'
 import { createInvoices } from '../lib/invoices'
 import { downloadInvoice, downloadReceipt } from '../lib/pdf'
-import { fmtDate, monthLabel, currentMonth, periodOf, whatsappLink, CHARGE_TYPES } from '../lib/format'
+import { fmtDate, monthLabel, currentMonth, periodOf, whatsappLink, CHARGE_LABELS } from '../lib/format'
 
 export default function ResidentDetail({ id }) {
   const { money, go, isAdmin, notify, settings } = useApp()
@@ -118,7 +118,7 @@ export default function ResidentDetail({ id }) {
                     {ledger.map((row) => (
                       <tr key={row.source + row.id}>
                         <td className="sub" style={{ whiteSpace: 'nowrap' }}>{fmtDate(row.date)}</td>
-                        <td>{row.label}{row.source === 'charge' && <div className="sub">{CHARGE_TYPES[row.type]}</div>}{row.source === 'payment' && row.raw.receipt_no && <div className="sub">Receipt #{row.raw.receipt_no}</div>}</td>
+                        <td>{row.label}{row.source === 'charge' && <div className="sub">{CHARGE_LABELS[row.type] || row.type}</div>}{row.source === 'payment' && row.raw.receipt_no && <div className="sub">Receipt #{row.raw.receipt_no}</div>}</td>
                         <td className="r num">{row.debit ? money(row.debit) : ''}</td>
                         <td className="r num" style={{ color: 'var(--green)' }}>{row.credit ? money(row.credit) : ''}</td>
                         <td className="r num strong">{money(row.balance)}</td>
@@ -151,6 +151,7 @@ export default function ResidentDetail({ id }) {
                 <dt>Occupation</dt><dd>{r.occupation || '—'}</dd>
                 <dt>People living</dt><dd>{r.persons}</dd>
                 <dt>Monthly rent</dt><dd className="num">{money(r.monthly_rent)}</dd>
+                <dt>Maintenance</dt><dd className="num">{money(r.maintenance_charge)} / month</dd>
                 <dt>Deposit</dt><dd className="num">{money(r.security_deposit)}</dd>
                 <dt>Check-in</dt><dd>{fmtDate(r.check_in)}</dd>
                 {r.check_out && <><dt>Check-out</dt><dd>{fmtDate(r.check_out)}</dd></>}
