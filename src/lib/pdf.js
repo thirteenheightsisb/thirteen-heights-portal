@@ -18,7 +18,7 @@ function header(doc, settings, title, subtitle) {
   doc.setTextColor(255, 255, 255)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(16)
-  doc.text(settings.hostel_name || 'Hostel', 14, 13)
+  doc.text(settings.hostel_name || '13 Heights', 14, 13)
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
   const contact = [settings.address, settings.phone].filter(Boolean).join('   |   ')

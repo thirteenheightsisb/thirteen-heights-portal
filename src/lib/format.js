@@ -62,12 +62,16 @@ export function whatsappLink(phone, text, countryCode = '92') {
   return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`
 }
 
+// Types staff can add from the portal
 export const CHARGE_TYPES = {
   rent: 'Rent',
-  utilities: 'Electricity / utilities',
+  maintenance: 'Maintenance charges',
   deposit: 'Security deposit',
   other: 'Other',
 }
+
+// Labels for every type, including old electricity bills that may still exist in the ledger
+export const CHARGE_LABELS = { ...CHARGE_TYPES, utilities: 'Electricity / utilities (old)' }
 
 export const PAYMENT_METHODS = ['Cash', 'Bank transfer', 'JazzCash', 'Easypaisa', 'Cheque', 'Other']
 
