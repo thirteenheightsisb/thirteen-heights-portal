@@ -145,6 +145,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .ledger-strip .label { font-size: 0.85rem; color: var(--muted); }
 .ledger-strip .value { font-size: 1.45rem; font-weight: 800; margin-top: 2px; font-variant-numeric: tabular-nums; }
 .ledger-strip .foot { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+.ledger-strip.five { grid-template-columns: repeat(5, 1fr); }
 .value.due { color: var(--amber); }
 .value.good { color: var(--green); }
 
@@ -261,8 +262,8 @@ td .sub { font-size: 0.82rem; color: var(--muted); }
 
 @media (max-width: 960px) {
   .grid-main-side, .grid-2 { grid-template-columns: 1fr; }
-  .ledger-strip { grid-template-columns: 1fr 1fr; }
-  .ledger-strip > div:nth-child(3) { border-left: 0; }
+  .ledger-strip, .ledger-strip.five { grid-template-columns: 1fr 1fr; }
+  .ledger-strip > div:nth-child(odd) { border-left: 0; }
   .ledger-strip > div:nth-child(n+3) { border-top: 1px solid var(--line); }
 }
 @media (max-width: 760px) {

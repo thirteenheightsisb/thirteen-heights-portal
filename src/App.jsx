@@ -70,7 +70,7 @@ function App() {
     setProfile(data || { approved: false, email: session.user.email })
     if (data?.approved) {
       const { data: s } = await supabase.from('settings').select('*').eq('id', 1).maybeSingle()
-      setSettings(s || { hostel_name: 'My Hostel', currency: 'Rs.', country_code: '92', due_day: 1 })
+      setSettings(s || { hostel_name: '13 Heights', currency: 'Rs.', country_code: '92', due_day: 1 })
     }
   }, [session?.user?.id])
 
@@ -123,7 +123,7 @@ function App() {
         <aside className="sidebar">
           <div className="brand">
             <svg className="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="6" fill="#fff" /><g fill="#1F3A5F"><rect x="8" y="7" width="6" height="5" rx="1" /><rect x="18" y="7" width="6" height="5" rx="1" /><rect x="8" y="15" width="6" height="5" rx="1" /><rect x="18" y="15" width="6" height="5" rx="1" fill="#2F7D5B" /><rect x="13" y="23" width="6" height="6" rx="1" /></g></svg>
-            <div><div className="brand-name">{settings.hostel_name}</div><div className="brand-sub">Management portal</div></div>
+            <div><div className="brand-name">{settings.hostel_name}</div><div className="brand-sub">Management Portal</div></div>
           </div>
           {NAV.map((n) => (
             <button key={n.page} className={`nav-btn ${active === n.page ? 'active' : ''}`} onClick={() => go(n.page)}>
